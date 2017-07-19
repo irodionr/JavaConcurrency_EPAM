@@ -11,65 +11,78 @@ public class Dining {
         for (int i = 0; i < philosophers.length - 1; i++) {
             philosophers[i] = new Philosopher("Philosopher " + i, forks[i], forks[i + 1]);
         }
-        philosophers[4] = new Philosopher("Philosopher 4", forks[4], forks[0]);
+        philosophers[4] = new Philosopher("Philosopher " + 4, forks[4], forks[0]);
 
         for (int i = 0; i < philosophers.length; i++) {
             System.out.println("Starting Thread " + i);
             Thread t = new Thread(philosophers[i]);
             t.start();
         }
+
     }
 
 }
 
-class Philosopher extends Thread {
+class Philosopher implements Runnable {
 
-    private Fork leftFork;
-    private Fork rightFork;
     private String name;
+    private final Fork leftFork, rightFork;
 
-    public Philosopher(String name, Fork lFork, Fork rFork) {
-        this.name = name;
-        leftFork = lFork;
-        rightFork = rFork;
+    public Philosopher(String _name, Fork _leftFork, Fork _rightFork) {
+        name = _name;
+        leftFork = _leftFork;
+        rightFork = _rightFork;
     }
 
     public void eat() {
-        if (!leftFork.inUse) {
-            if (!rightFork.inUse) {
-                leftFork.take();
-                rightFork.take();
 
-                System.out.println(name + " is eating");
-                try {
-                    Thread.sleep(1000);
-                }
-                catch (InterruptedException exc) {
-                    System.err.println(exc.getMessage());
-                }
+        synchronized (leftFork) {
+            synchronized (rightFork) {
+                if (!leftFork.isTaken() && !rightFork.isTaken()) {
+                    leftFork.take();
+                    rightFork.take();
 
-                leftFork.release();
-                rightFork.release();
+                    System.out.println(name + " is eating");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    leftFork.release();
+                    rightFork.release();
+                }
             }
         }
 
         think();
+
     }
 
     public void think() {
+
         System.out.println(name + " is thinking");
         try {
             Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-        catch (InterruptedException exc) {
-            System.err.println(exc.getMessage());
-        }
+
     }
 
+    @Override
     public void run() {
-        for (int i = 0; i < 10; i++) {
+
+        for (int i = 0; i < 5; i++) {
+            if (i != 1) {
+                System.out.println(name + " has eaten " + i + " times");
+            } else {
+                System.out.println(name + " has eaten " + i + " time");
+            }
+
             eat();
         }
+
     }
 
 }
@@ -77,20 +90,41 @@ class Philosopher extends Thread {
 class Fork {
 
     private String name;
-    public boolean inUse;
+    private boolean isTaken;
 
-    public Fork(String name) {
-        this.name = name;
+    public Fork(String _name) {
+
+        name = _name;
+        isTaken = false;
+
     }
 
     public void take() {
-        System.out.println("Take " + name);
-        this.inUse = true;
+
+        if (!isTaken) {
+            isTaken = true;
+            System.out.println("Take " + name);
+        } else {
+            System.out.println(name + " is already taken");
+        }
+
     }
 
     public void release() {
-        System.out.println("Release " + name);
-        this.inUse = false;
+
+        if (isTaken) {
+            isTaken = false;
+            System.out.println("Release " + name);
+        } else {
+            System.out.println(name + " is already released");
+        }
+
+    }
+
+    public boolean isTaken() {
+
+        return isTaken;
+
     }
 
 }
